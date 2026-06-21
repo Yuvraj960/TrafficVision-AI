@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Backend deps
+        working-directory: backend
+        run: uv sync
+
+      - name: Run backend tests
+        working-directory: backend
+        run: uv run pytest --tb=short -q
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: backend/coverage.xml
+          flags: backend
+        continue-on-error: true
+
+  cv-pipeline-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install deps
+        working-directory: cv-pipeline
+        run: uv sync
+
+      - name: Run cv-pipeline tests
+        working-directory: cv-pipeline
+        run: uv run pytest --tb=short -q
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: pnpm test:run
+
+  lint-all:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Backend lint
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+        run: |
+          pip install uv
+          cd backend && uv sync
+          uv run ruff check .
+
+      - name: Frontend lint
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+        run: |
+          cd frontend && corepack enable && pnpm install && pnpm lint
