@@ -1,0 +1,127 @@
+services:
+  # ──────────────────────────────────────
+  # PostgreSQL Database
+  # ──────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: trafficvision-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-trafficvision}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-trafficvision}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trafficvision}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trafficvision-net
+
+  # ──────────────────────────────────────
+  # Redis (Message Broker + Result Backend)
+  # ──────────────────────────────────────
+  broker:
+    image: redis:7-alpine
+    container_name: trafficvision-broker
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trafficvision-net
+
+  # ──────────────────────────────────────
+  # Backend API (FastAPI)
+  # ──────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trafficvision-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+    networks:
+      - trafficvision-net
+
+  # ──────────────────────────────────────
+  # CV Pipeline Worker (Celery + Real CV)
+  # ──────────────────────────────────────
+  cv-pipeline:
+    build:
+      context: ./cv-pipeline
+      dockerfile: Dockerfile
+    container_name: trafficvision-cv-pipeline
+    restart: unless-stopped
+    # GPU access — requires nvidia-docker on the host. Worker auto-detects GPU
+    # and falls back to mock/CPU inference. We override entrypoint to skip the
+    # nvidia-base-image init script which exits non-zero when no GPU is present.
+    entrypoint: ["/bin/sh", "-c", "nvidia-smi > /dev/null 2>&1 && celery -A app.worker worker --loglevel=info --concurrency=2 || (echo 'No GPU detected — running in mock mode' && USE_REAL_MODELS=false celery -A app.worker worker --loglevel=info --concurrency=2)"]
+    env_file:
+      - .env
+    environment:
+      - USE_REAL_MODELS=${USE_REAL_MODELS:-false}
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - DEVICE=${DEVICE:-cuda}
+    volumes:
+      - ./cv-pipeline:/app
+    depends_on:
+      broker:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - trafficvision-net
+
+  # ──────────────────────────────────────
+  # Frontend (React + Vite)
+  # ──────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: trafficvision-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - trafficvision-net
+
+# ──────────────────────────────────────
+# Volumes
+# ──────────────────────────────────────
+volumes:
+  pgdata:
+  redisdata:
+
+# ──────────────────────────────────────
+# Network
+# ──────────────────────────────────────
+networks:
+  trafficvision-net:
+    driver: bridge
