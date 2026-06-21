@@ -1,2 +1,92 @@
-PROMPTS
+# ========================
+# Python
+# ========================
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.whl
+pip-wheel-metadata/
+.eggs/
+*.manifest
+*.spec
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# ========================
+# Node.js / Frontend
+# ========================
+node_modules/
+frontend/dist/
+frontend/build/
+*.tsbuildinfo
+
+# ========================
+# IDE
+# ========================
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ========================
+# Docker
+# ========================
+docker-compose.override.yml
+
+# ========================
+# Database
+# ========================
+pgdata/
+*.sql.bak
+
+# ========================
+# CV Pipeline
+# ========================
+cv-pipeline/models/*.pt
+cv-pipeline/models/*.onnx
+cv-pipeline/models/*.pth
+!cv-pipeline/models/.gitkeep
+
+# ========================
+# Logs
+# ========================
+*.log
+logs/
+
+# ========================
+# Testing / Coverage
+# ========================
+.coverage
+htmlcov/
+.pytest_cache/
+coverage/
+
+# ========================
+# OS
+# ========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
