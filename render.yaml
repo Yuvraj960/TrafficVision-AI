@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: trafficvision-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # set via Render dashboard
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: trafficvision-broker
+          envVarKey: REDIS_URL
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: trafficvision-broker
+          envVarKey: REDIS_URL
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://trafficvision-frontend.onrender.com
+
+  - type: redis
+    name: trafficvision-broker
+    plan: free
+    ipAllowList: []
+
+  - type: web
+    name: trafficvision-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    envVars:
+      - key: VITE_API_URL
+        value: https://trafficvision-backend.onrender.com
