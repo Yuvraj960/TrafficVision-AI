@@ -10,20 +10,20 @@ services:
         sync: false # set via Render dashboard
       - key: REDIS_URL
         fromService:
-          type: redis
+          type: keyvalue
           name: trafficvision-broker
-          envVarKey: REDIS_URL
+          property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
-          type: redis
+          type: keyvalue
           name: trafficvision-broker
-          envVarKey: REDIS_URL
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
         value: https://trafficvision-frontend.onrender.com
 
-  - type: redis
+  - type: keyvalue
     name: trafficvision-broker
     plan: free
     ipAllowList: []
